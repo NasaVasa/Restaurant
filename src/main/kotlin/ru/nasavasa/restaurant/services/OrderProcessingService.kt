@@ -1,3 +1,6 @@
+/**
+ * Сервис для обработки заказов.
+ */
 package ru.nasavasa.restaurant.services
 
 import com.awazor.cinema.exception.RestaurantException
@@ -25,12 +28,20 @@ class OrderProcessingService(
     private val coroutineScope = CoroutineScope(Dispatchers.Default)
     private val semaphore = Semaphore(restaurantWorkers)
 
+    /**
+     * Контекст обработки заказа, содержащий идентификатор заказа и задание.
+     */
     private data class OrderProcessingContext(val orderId: Int, val job: Job)
 
     private val orderQueue: Queue<Order> = LinkedList()
 
     private val orderProcessingContextMap = HashMap<Int, OrderProcessingContext>()
 
+    /**
+     * Обрабатывает заказ и добавляет его в очередь.
+     * @param order Заказ для обработки.
+     * @return Идентификатор обработанного заказа.
+     */
     fun processOrder(order: Order): Int {
         orderQueue.offer(order) // Добавляем заказ в конец очереди
         processNextOrder() // Начинаем обработку следующего заказа
@@ -39,11 +50,11 @@ class OrderProcessingService(
 
     private fun processNextOrder() {
         if (orderQueue.isNotEmpty()) {
-            val order = orderQueue.poll() // Извлекаем первый заказ из очереди
+            val order = orderQueue.poll()
             val orderId = order.id
             val job = coroutineScope.launch {
                 try {
-                    semaphore.acquire() // Запрашиваем разрешение
+                    semaphore.acquire()
                     var allTimeSeconds: Long = 0
                     for (orderPosition in order.dishes) {
                         val dish = dishRepository.read(orderPosition.dishId)
@@ -53,7 +64,7 @@ class OrderProcessingService(
                     logger.info("Processing order: $order. It will take ${allTimeSeconds / 60} minutes")
                     order.status = OrderStatus.PREPARING
                     orderRepository.update(order)
-                    delay(allTimeSeconds * 1000 / 60) // Emulate cooking
+                    delay(allTimeSeconds * 1000 / 60)
                     order.status = OrderStatus.READY
                     orderRepository.update(order)
                     val restaurant = Restaurant.getInstance()
@@ -62,8 +73,8 @@ class OrderProcessingService(
                 } catch (e: CancellationException) {
                     logger.info("Order processing canceled: $order")
                 } finally {
-                    semaphore.release() // Освобождаем разрешение
-                    processNextOrder() // Начинаем обработку следующего заказа
+                    semaphore.release()
+                    processNextOrder()
                 }
             }
             val orderProcessingContext = OrderProcessingContext(orderId, job)
@@ -71,6 +82,10 @@ class OrderProcessingService(
         }
     }
 
+    /**
+     * Отменяет заказ.
+     * @param orderId Идентификатор заказа для отмены.
+     */
     fun cancel(orderId: Int) {
         val orderProcessingContext = orderProcessingContextMap[orderId]
             ?: throw RestaurantException("Заказ с id $orderId не находится в процессе приготовления")
@@ -83,6 +98,11 @@ class OrderProcessingService(
         orderProcessingContextMap.remove(orderId)
     }
 
+    /**
+     * Обновляет количество работников в ресторане.
+     * @param user Пользователь, запрашивающий обновление.
+     * @return true, если обновление успешно, иначе false.
+     */
     fun updateWorkers(user: User): Boolean {
         if (!user.isAdmin) throw RestaurantException("Пользователь ${user.login} не является администратором")
         val restaurant = Restaurant.getInstance()

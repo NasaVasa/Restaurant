@@ -1,3 +1,6 @@
+/**
+ * Сервис для работы с блюдами.
+ */
 package ru.nasavasa.restaurant.services
 
 import com.awazor.cinema.exception.RestaurantException
@@ -9,6 +12,16 @@ import ru.nasavasa.restaurant.data.models.User
 
 @Service
 class DishService(private val dishRepository: RepositoryInterface<Dish>, private val orderService: OrderService) {
+    /**
+     * Добавляет блюдо в ресторан.
+     * @param user Пользователь, добавляющий блюдо.
+     * @param name Название блюда.
+     * @param description Описание блюда.
+     * @param quantity Количество порций.
+     * @param dishCookingTimeMinutes Время приготовления в минутах.
+     * @param price Цена блюда.
+     * @return true, если блюдо успешно добавлено, иначе false.
+     */
     fun addDish(
         user: User,
         name: String?,
@@ -30,6 +43,12 @@ class DishService(private val dishRepository: RepositoryInterface<Dish>, private
         return isCreate
     }
 
+    /**
+     * Удаляет блюдо из ресторана.
+     * @param user Пользователь, удаляющий блюдо.
+     * @param dishId Идентификатор удаляемого блюда.
+     * @return true, если блюдо успешно удалено, иначе false.
+     */
     fun deleteDish(user: User, dishId: Int?): Boolean {
         if (!user.isAdmin) throw RestaurantException("Пользователь не является администратором")
         if (dishId == null) throw RestaurantException("Переданы не все параметры")
@@ -45,8 +64,12 @@ class DishService(private val dishRepository: RepositoryInterface<Dish>, private
         return true
     }
 
+    /**
+     * Получает список всех блюд.
+     * @param user Пользователь, запрашивающий список блюд.
+     * @return Список всех блюд.
+     */
     fun getDishes(user: User): List<Dish> {
         return dishRepository.readAll()
     }
-
 }
